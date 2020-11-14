@@ -41,6 +41,9 @@
 #     ~/.ssh/authorized_keys.IDENTITY   - SSH authorized keys for IDENTITY
 #     ~/.ssh/authorized_keys            - Symlink to SSH authorized_keys file
 #
+#     ~/.ssh/config.IDENTITY   - SSH config for IDENTITY
+#     ~/.ssh/config            - Symlink to SSH config file
+#
 #   * GPG Files
 #
 #   * AWS files
@@ -189,7 +192,7 @@ function ssh_list() {
     if ! cd ~/.ssh; then warn "No ~/.ssh credentials"; echo; return; fi
 
     info available SSH credentials
-    ls -ld id_rsa.* id_dsa.* authorized_keys.* || true
+    ls -ld id_rsa.* id_dsa.* authorized_keys.* config.* || true
     echo
 }
 
@@ -201,6 +204,7 @@ function ssh_whoami() {
     info
     ls -ld id_???  || warn "no ~/.ssh/id_{rsa,dsa} file"
     ls -ld authorized_keys || warn "no authorized_keys file"
+    ls -ld config || warn "no config file"
     info SSH Agent Identities
     ssh-add -l
     echo
@@ -213,6 +217,7 @@ function ssh_become() {
     rsa_creds="id_rsa.""${who}"
     dsa_creds="id_dsa.""${who}"
     authorized_keys="authorized_keys.""${who}"
+    config="config.""${who}"
 
     if [ -f "${dsa_creds}" ]; then
         ssh_creds="${dsa_creds}"
@@ -245,6 +250,18 @@ function ssh_become() {
         [[ -v VERBOSE ]] && set +x
         rm -f "${target}" || true
         ln -s "${authorized_keys}" "${target}"
+        chmod 644 "${target}"
+        [[ -v VERBOSE ]] && set -x
+    fi
+
+# symlnk config into ~/.ssh
+
+    target=`basename $config ".""${who}"`
+
+    if [ -f "${config}"  ]; then
+        [[ -v VERBOSE ]] && set +x
+        rm -f "${target}" || true
+        ln -s "${config}" "${target}"
         chmod 644 "${target}"
         [[ -v VERBOSE ]] && set -x
     fi
