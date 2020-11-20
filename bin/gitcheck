@@ -1,0 +1,49 @@
+#!/bin/bash
+# Show actions needed for a list of git directories
+#
+# Usage: gitcheck [DIR [DIR]]
+#
+
+set -e; set -u
+
+# Helper functions
+PROG=`basename "$0" | tr -d '\n'`
+
+function info()  { echo `date +%c` ${PROG}\: info: "$@" 1>&2; }
+function warn()  { echo `date +%c` ${PROG}\: warning: "$@" 1>&2; }
+function error() { echo `date +%c` ${PROG}\: error: "$@" 1>&2; }
+function debug() { [[ -v DEBUG ]] && echo `date +%c` ${PROG}\: debug: "$@" 1>&2 || true ; }
+function die()   { echo `date +%c` ${PROG}\: fatal: "$@" 1>&2 && exit 1; }
+
+function isGitPushOrPullNeeded() {
+    # Show if git push or pull is needed to upstream
+    #
+    # Source: http://stackoverflow.com/questions/3258243/git-check-if-pull-needed
+    #
+
+    DIR=${1:-`pwd`} # get directory name
+    pushd ${DIR} > /dev/null # go there
+    info "Checking ${DIR}"
+    git fetch --all
+
+    LOCAL=$(git rev-parse @)
+    REMOTE=$(git rev-parse @{u})
+    BASE=$(git merge-base @ @{u})
+
+    if [ $LOCAL = $REMOTE ]; then
+        info "Up-to-date (LOCAL $LOCAL = REMOTE $REMOTE)"
+    elif [ $LOCAL = $BASE ]; then
+        info "Need to pull (LOCAL $LOCAL = BASE $BASE)"
+    elif [ $REMOTE = $BASE ]; then
+        info "Need to push (REMOTE $REMOTE = BASE $BASE)"
+    else
+        info "Diverged"
+    fi
+
+    popd # back to original directory
+}
+
+isGitPushOrPullNeeded
+
+
+
