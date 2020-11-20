@@ -1,0 +1,4 @@
+#! /bin/bash
+# Look up my public ip address and get it's hostname
+
+host `myip`
