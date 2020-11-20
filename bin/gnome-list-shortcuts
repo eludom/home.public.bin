@@ -3,6 +3,10 @@
 #
 # https://askubuntu.com/questions/725611/how-to-search-through-all-keyboard-shortcuts-that-use-a-certain-key
 
-set -e -u -x  # This is bash.  Be safe.
+set -e -u  # This is bash.  Be safe.
 
- gsettings list-recursively | awk '/hotkey/||/keybinding/||/media-key/'
+echo GNOME SHORTCUTS WITH BINDINGS
+gsettings list-recursively | awk '/hotkey/||/keybinding/||/media-key/'| grep -v -E \\[..\\]\|\\[\\]
+
+echo GNOME SHORTCUTS WITHOUT BINDINGS
+gsettings list-recursively | awk '/hotkey/||/keybinding/||/media-key/'| grep -E \\[..\\]\|\\[\\]
