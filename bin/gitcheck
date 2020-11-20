@@ -21,9 +21,6 @@ function isGitPushOrPullNeeded() {
     # Source: http://stackoverflow.com/questions/3258243/git-check-if-pull-needed
     #
 
-    DIR=${1:-`pwd`} # get directory name
-    pushd ${DIR} > /dev/null # go there
-    info "Checking ${DIR}"
     git fetch --all
 
     LOCAL=$(git rev-parse @)
@@ -40,10 +37,53 @@ function isGitPushOrPullNeeded() {
         info "Diverged"
     fi
 
-    popd # back to original directory
 }
 
-isGitPushOrPullNeeded
+function gitChecks() {
+    # Perform various checks of status of git in currenct directory
+    # Show any actions needed
+    
+    DIR=${1:-`pwd`} # get directory name
+
+    if [ ! -d "$DIR/.git" ]; then
+        warn "$DIR is not a git repo.  Skipping."
+        echo
+        return
+    fi
+    
+    pushd ${DIR} > /dev/null # go there
+    info "Checking ${DIR}"
+    
+    isGitPushOrPullNeeded
+    echo
+    
+    info git status for $DIR
+    git status .
+    echo
+    
+    popd > /dev/null # back to original directory
+}
+
+
+
+ARGC=$#  # Number of args, not counting $0
+
+i=1  # Used as argument index
+while true; do
+
+    DIR=${1:-""}
+    
+    if [ "$DIR" ]; then
+        gitChecks "$DIR"
+  	shift
+     else
+   	break # Stop loop when no more args.
+     fi
+     i=$((i+1))
+done
+
+echo
+info "Done."
 
 
 
