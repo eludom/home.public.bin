@@ -1,4 +1,4 @@
-1#! /bin/bash
+#! /bin/bash
 # Create a report about Things That Are Not Right on my home Ubuntu system.
 #
 # Usage:

@@ -67,11 +67,11 @@ for opt, arg in options:
         sys.exit(2)
 
 if verbose:
-	print "printName", printName
-	print "printAll", printAll
-	print "verbose", verbose
-	print "inputName", inputName
-	print "remainder", remainder
+	print("printName", printName)
+	print("printAll", printAll)
+	print("verbose", verbose)
+	print("inputName", inputName)
+	print("remainder", remainder)
 
 myResolver = dns.resolver.Resolver() #create a new instance named 'myResolver'
 
@@ -80,7 +80,7 @@ import fileinput
 for name in fileinput.input(remainder):
 
 	if verbose:
-		print "name", name
+		print("name", name)
 	name = name.strip()
 
 	atLeastOne = False
