@@ -119,6 +119,12 @@ END
 }
 
 
+# See
+#
+#   https://wiki.archlinux.org/index.php/GnuPG#gpg-agent
+#
+# I'm pretty sure mere mortals can't grok gpg in fullness.
+
 function gpg_list() {
     # list available gpg credentail sets (diretories)
     info available GPG credentials sets
@@ -131,6 +137,7 @@ function gpg_whoami() {
     info Current gpg credential set
     info
     ls -ld ~/.gnupg || true
+    echo "GET_PASSPHRASE --no-ask NotCachedID Err Pmt Des" | gpg-connect-agent
     echo
 
 }
