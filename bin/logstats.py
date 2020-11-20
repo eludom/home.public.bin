@@ -63,12 +63,12 @@ def main():
         sys.exit(1)
 
     if opts.debug:
-        print "args", args
+        print("args", args)
 
     # print header
 
 
-    print  "|".join(["","dir","totalFiles","totalSize","totalLines","avgRecord","oldestTime","oldestFile","newestTime","newestFile",""])      
+    print("|".join(["","dir","totalFiles","totalSize","totalLines","avgRecord","oldestTime","oldestFile","newestTime","newestFile",""]))      
 
     # Enumaerate log files of interest
 
@@ -87,7 +87,7 @@ def main():
         dirTotalsNewestName = ""
 
         if opts.debug:
-            print "dir", dir
+            print("dir", dir)
 
         if not os.path.isdir(dir):
             sys.stderr.write(dir, ' is not a directory, skipping'+ str(e))
@@ -99,7 +99,7 @@ def main():
                   (fnmatch.fnmatch(f,opts.files) or
                    fnmatch.fnmatch(f,opts.files + ".*.gz")))]
         if opts.debug:
-            print "files", files
+            print("files", files)
 
         for file in files:
             
@@ -118,13 +118,13 @@ def main():
             else:
                 try:
                     num_lines = sum(1 for line in open(file))
-                except Exception, e:
+                except Exception as e:
                     sys.stderr.write('Unable to count lines in ' + file + ' '+ str(e) + "\n")
                     num_lines = 0
 
 
             if opts.debug:
-                print "file:", file, "size", statinfo.st_size,  "num_lines", num_lines, "mtime:", time.ctime(statinfo.st_mtime)
+                print("file:", file, "size", statinfo.st_size,  "num_lines", num_lines, "mtime:", time.ctime(statinfo.st_mtime))
 
             # compute derived statistics about the file
 
@@ -144,29 +144,29 @@ def main():
             if opts.byname:
                 if dirTotalsOldestName == "" or file < dirTotalsOldestName:
                     if opts.debug:
-                        print "New Oldest File ", file
+                        print("New Oldest File ", file)
                     dirTotalsOldestName = file
                     dirTotalsOldestTimestamp = 0
 
                 if dirTotalsNewestName == "" or file > dirTotalsNewestName:
                     if opts.debug:
-                        print "New Newest File ", file
+                        print("New Newest File ", file)
                     dirTotalsNewestName = file
                     dirTotalsNewestTimestamp = 0
                     
             else:
                 if statinfo.st_mtime < dirTotalsOldestTimestamp:
                     if opts.debug:
-                        print statinfo.st_mtime, "<", dirTotalsOldestTimestamp
-                        print "New Oldest Timestamp: ", dirTotalsOldestTimestamp                
+                        print(statinfo.st_mtime, "<", dirTotalsOldestTimestamp)
+                        print("New Oldest Timestamp: ", dirTotalsOldestTimestamp)                
                     dirTotalsOldestTimestamp = statinfo.st_mtime
                     dirTotalsOldestName = file
 
 
                 if statinfo.st_mtime > dirTotalsNewestTimestamp:
                     if opts.debug:
-                        print statinfo.st_mtime, ">", dirTotalsNewestTimestamp
-                        print "New Newest Timestamp: ", dirTotalsNewestTimestamp                
+                        print(statinfo.st_mtime, ">", dirTotalsNewestTimestamp)
+                        print("New Newest Timestamp: ", dirTotalsNewestTimestamp)                
                     dirTotalsNewestTimestamp = statinfo.st_mtime
                     dirTotalsNewestName = file
 
@@ -179,7 +179,7 @@ def main():
 
         # print directory summary
         
-        print "|".join(["",dir, str(dirTotalsFiles),str(dirTotalsSize),str(dirTotalsLines),str(dirAvgRecord),time.ctime(dirTotalsOldestTimestamp),dirTotalsOldestName,time.ctime(dirTotalsNewestTimestamp),dirTotalsNewestName,""])
+        print("|".join(["",dir, str(dirTotalsFiles),str(dirTotalsSize),str(dirTotalsLines),str(dirAvgRecord),time.ctime(dirTotalsOldestTimestamp),dirTotalsOldestName,time.ctime(dirTotalsNewestTimestamp),dirTotalsNewestName,""]))
 
 if __name__ == '__main__':
     main()
