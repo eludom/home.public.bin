@@ -1,7 +1,7 @@
 #!/bin/bash
 # Show actions needed for a list of git directories
 #
-# Usage: gitcheck [DIR [DIR]]
+# Usage: gitcheck [-v] [DIR [DIR]]
 #
 
 set -e; set -u
@@ -15,28 +15,46 @@ function error() { echo `date +%c` ${PROG}\: error: "$@" 1>&2; }
 function debug() { [[ -v DEBUG ]] && echo `date +%c` ${PROG}\: debug: "$@" 1>&2 || true ; }
 function die()   { echo `date +%c` ${PROG}\: fatal: "$@" 1>&2 && exit 1; }
 
+# Global Variables
+declare csv_row
+csv_row="" # build up a one line output for each repo
+
 function isGitPushOrPullNeeded() {
     # Show if git push or pull is needed to upstream
     #
     # Source: http://stackoverflow.com/questions/3258243/git-check-if-pull-needed
     #
+    # TO DOs:
+    #   TODO collect all info in a CSV by default, put put one summary line per repo
+    #   TODO add number of modified, untracked, etc files from "git ls-files [--optione]"
+    #
+    #   Here are the "git branch --format" options
+    #
+    #     $ git branch --format "refname %(refname) objecttype %(objecttype) objectsize %(objectsize) objectname %(objectname) deltabase %(deltabase) upstream %(upstream) push %(push) HEAD %(HEAD) symref %(symref) worktreepath %(worktreepath) contents:subject %(contents:subject) contents:body %(contents:body) contents:signature %(contents:signature)"
+    #
+    #   They are likely useful for getting info
 
+    # Fetch so we can compare local state with upstream without pull
     git fetch --all
 
     LOCAL=$(git rev-parse @)
     REMOTE=$(git rev-parse @{u})
     BASE=$(git merge-base @ @{u})
 
+    push_or_pull_needed=":"
+    
     if [ $LOCAL = $REMOTE ]; then
-        info "Up-to-date (LOCAL $LOCAL = REMOTE $REMOTE)"
+        push_or_pull_needed="UP-TO-DATE"
     elif [ $LOCAL = $BASE ]; then
-        info "Need to pull (LOCAL $LOCAL = BASE $BASE)"
+        push_or_pull_needed="pull"
     elif [ $REMOTE = $BASE ]; then
-        info "Need to push (REMOTE $REMOTE = BASE $BASE)"
+        push_or_pull_needed="push"
     else
-        info "Diverged"
+        push_or_pull_needed="DIVERGED"
     fi
 
+    info "push_or_pull_needed: $push_or_pull_needed"
+    csv_row="${csv_row}:${push_or_pull_needed}"
 }
 
 function gitChecks() {
@@ -53,6 +71,8 @@ function gitChecks() {
     
     pushd ${DIR} > /dev/null # go there
     info "Checking ${DIR}"
+
+    csv_row="${DIR}:"
     
     isGitPushOrPullNeeded
     echo
@@ -67,6 +87,10 @@ function gitChecks() {
 
 
 ARGC=$#  # Number of args, not counting $0
+
+if [ "$ARGC" == "0" ]; then
+    set -- `pwd` "$@" # add pwd if no args
+fi
 
 i=1  # Used as argument index
 while true; do
