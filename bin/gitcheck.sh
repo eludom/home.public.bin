@@ -1,21 +1,48 @@
 #! /bin/bash
 # Do a quick status (git branch -vv) on one or more git repos
 #
-# Usage: gitstat [-f|-s] [dir [dir...]]
+# Usage: gitstat [-f|-s] dir [dir...]
 #
 # -f - Fetch first
 # -s - Short Status
 
-set -e; set -u
+set -e; 
+
+fetch=false
+status=false
+
+function show_usage() {
+    echo Usage: gitstat [-f] [-s] [dir[dir...]]
+    exit 1
+}
+
+while [ ! -z "$1" ];do
+   case "$1" in
+        -h|--help)
+          show_usage
+          ;;
+        -f|--fetch)
+          fetch="true"
+          ;;
+        -s|--sleep)
+          status="true"
+          ;;
+        *)
+            if [[ "$1" =~ ^- ]]; then
+                echo unknown flag $1
+                show_usage
+            else
+                break
+            fi
+   esac
+shift
+done
 
 ARGC=$#
 
 if [ "$ARGC" == "0" ]; then
     set -- `pwd` "$@" # add pwd if no args
 fi
-
-fetch=false
-status=false
 
 for i in $* ; do
 
