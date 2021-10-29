@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /usr/bin/env bash
 # change credentials - symlink different credential files
 #
 # Usage: be [options] who
@@ -11,9 +11,10 @@
 #     Select credentials
 #
 #     -a|--aws		change/list aws credentials ONLY
-#     -g|--gnupg		change/list gnupgcredentials ONLY
+#     -g|--gnupg        change/list gnupgcredentials ONLY
 #     -p|--pass		change/list pas credentials ONLY
 #     -s|--ssh		change/list ssh credentials ONLY
+#     -t|--git		change/list git credentials ONLY
 #
 #     Select operation
 #
@@ -43,6 +44,8 @@
 #
 #     ~/.ssh/config.IDENTITY   - SSH config for IDENTITY
 #     ~/.ssh/config            - Symlink to SSH config file
+#
+#     ~/,gitconfig.IDENTITY    - git config file
 #
 #   * GPG Files
 #
@@ -103,6 +106,7 @@ Usage: be [options] who
     -g|--gnupg		change/list gnupgcredentials ONLY
     -p|--pass		change/list pas credentials ONLY
     -s|--ssh		change/list ssh credentials ONLY
+    -t|--git		change/list git credentials ONLY
 
     Select operation
 
@@ -134,6 +138,8 @@ function gpg_list() {
 
 function gpg_whoami() {
     # list current gpg identity
+    if [ ! -L ~/.gnupg ]; then warn "No ~/.gnupg directory"; echo; return; fi
+
     info Current gpg credential set
     info
     ls -ld ~/.gnupg || true
@@ -160,7 +166,7 @@ function aws_list() {
 function aws_whoami() {
     # list current aws identity
     echo foo
-    if ! cd ~/.aws; then warn "No ~/.aws credentials"; echo; return; fi    
+    if ! cd ~/.aws; then warn "No ~/.aws credentials"; echo; return; fi
 
     info Current aws credentials
     info
@@ -206,7 +212,7 @@ function ssh_list() {
 function ssh_whoami() {
     # list current ssh identity
     if ! cd ~/.ssh; then warn "No ~/.ssh credentials"; echo; return; fi
-    
+
     info Current SSH identities
     info
     ls -ld id_???  || warn "no ~/.ssh/id_{rsa,dsa} file"
@@ -220,7 +226,7 @@ function ssh_whoami() {
 function ssh_become() {
     # change ssh identity
     if ! cd ~/.ssh; then warn "No ~/.ssh credentials"; echo; return; fi
-    
+
     rsa_creds="id_rsa.""${who}"
     dsa_creds="id_dsa.""${who}"
     authorized_keys="authorized_keys.""${who}"
@@ -285,6 +291,8 @@ function pass_list() {
 
 function pass_whoami() {
     # list current pass identity
+    if [ ! -L ~/.password-store ]; then warn "No ~/.password-store directory"; echo; return; fi
+
     info Current pass credential set
     info
     ls -ld ~/.password-store || true
@@ -308,6 +316,8 @@ function org_list() {
 
 function org_whoami() {
     # list current org identity
+    if [ ! -L ~/Org ]; then warn "No ~/Org directory"; echo; return; fi
+
     info Current org credential set
     info
     ls -ld ~/Org || true
@@ -320,6 +330,31 @@ function org_become() {
     ln -s ~/Org."${who}" ~/Org
 }
 
+function git_list() {
+    # list available git credentail sets (diretories)
+    info available git credentials sets
+    ls -ld ~/.gitconfig.* || true
+    echo
+}
+
+function git_whoami() {
+    # list current git identity
+    if [ ! -L ~/.gitconfig ]; then warn "No git config"; echo; return; fi
+
+    info Current git credential set
+    info
+    ls -ld ~/.gitconfig || true
+    echo
+}
+
+function git_become() {
+    # change git identity
+    rm -f ~/.gitconfig || true
+    ln -s ~/.gitconfig."${who}" ~/.gitconfig
+    #gpg_become # need to switch GPG IDs too
+}
+
+
 #
 # "main()" begins here
 #
@@ -330,7 +365,7 @@ AWS=1
 GPG=1
 PASSWORD=1
 ORG=1
-
+GIT=1
 
 
 # parse global options
@@ -340,6 +375,7 @@ do
     case $i in
         -a|--aws)
             AWS=1
+            unset GIT
             unset SSH
             unset GPG
             unset PASSWORD
@@ -354,6 +390,7 @@ do
             ;;
         -g|--gnupg)
             GPG=1
+            unset GIT
             unset AWS
             unset SSH
             unset PASSWORD
@@ -370,16 +407,18 @@ do
             shift # past argument with no value
             ;;
         -o|--org)
+            ORG=1
+            unset GIT
             unset PASSWORD
             unset AWS
             unset SSH
             unset GPG
-            ORG=1
             p_flag="-p"
             shift # past argument with no value
             ;;
         -p|--pass)
             PASSWORD=1
+            unset GIT
             unset AWS
             unset SSH
             unset GPG
@@ -387,8 +426,21 @@ do
             p_flag="-p"
             shift # past argument with no value
             ;;
+
+        -t|--git)
+            GIT=1
+            unset PASSWORD
+            unset AWS
+            unset SSH
+            unset GPG
+            unset ORG
+            p_flag="-p"
+            shift # past argument with no value
+            ;;
+
         -s|--ssh)
             SSH=1
+            unset GIT
             unset AWS
             unset GPG
             unset PASSWORD
@@ -423,12 +475,12 @@ if [[ !  -v LIST  && ! -v WHOAMI ]]; then
     who="${1}"
 fi
 
-if [[ ! -v SSH && ! -v AWS && ! -v ORG && ! -v PASSWORD && ! -v GPG ]]; then
+if [[ ! -v SSH && ! -v AWS && ! -v ORG && ! -v PASSWORD && ! -v GPG && ! -v GIT ]]; then
     die "Must specify at least one of '--aws' '--ssh' '--gnupg' '--pass'"
 fi
 
 
-# Change aws credentials
+# list/show/become aws credentials
 
 if [ -v AWS ]; then
 
@@ -441,7 +493,7 @@ if [ -v AWS ]; then
     fi
 fi
 
-# Change ssh credentials
+# list/show/become ssh credentials
 
 if [ -v SSH ]; then
 
@@ -454,7 +506,7 @@ if [ -v SSH ]; then
     fi
 fi
 
-# Change GPG credentials
+# list/show/become GPG credentials
 
 if [ -v GPG ]; then
 
@@ -467,7 +519,7 @@ if [ -v GPG ]; then
     fi
 fi
 
-# Change pass credentials
+# list/show/become pass credentials
 
 if [ -v PASSWORD ]; then
     if [[ -v LIST ]]; then
@@ -479,7 +531,21 @@ if [ -v PASSWORD ]; then
     fi
 fi
 
-# Change org credentials
+
+# list/show/become git credentials
+
+if [ -v GIT ]; then
+    if [[ -v LIST ]]; then
+        git_list
+    elif [[ -v WHOAMI ]]; then
+        git_whoami
+    else
+        git_become
+    fi
+fi
+
+
+# list/show/become org credentials
 
 if [ -v ORG ]; then
     if [[ -v LIST ]]; then
