@@ -10,7 +10,7 @@
 # This works very well, and quickly !!!
 # http://serverfault.com/questions/89114/finding-the-public-ip-address-in-a-shell-script
 dig @resolver1.opendns.com myip.opendns.com +short
-
+host `dig @resolver1.opendns.com myip.opendns.com +short`
 
 
 
