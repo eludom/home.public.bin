@@ -1,10 +1,27 @@
-This directory contains misc little utilities I've written or
-borrowed.  It is set up as a stow repo, so
+#+options: ':nil *:t -:t ::t <:t H:3 \n:nil ^:nil arch:headline
+#+options: author:t broken-links:nil c:nil creator:nil
+#+options: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:2
+#+options: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+options: timestamp:t title:t toc:t todo:t |:t
+#+title: home.public.bin repo
+#+date: <2021-11-07 Sun 07:52:55>
+#+author: George M Jones
+#+email: gmj@pobox.com
+#+language: en
+#+select_tags: export
+#+exclude_tags: noexport
+#+creator: Emacs 28.0.50 (Org mode 9.4)
 
+
+This directory contains misc little utilities I've written or
+borrowed.  It is set up as a [[https://www.gnu.org/software/stow/][stow]] repo (=sudo atp install stow=), so
+
+   #+begin_example
    mkdir ~/stow
    cd stow
-   git clone [THIS]
+   git clone [THIS-REPO]
    stow home.public.bin
+   #+end_example
 
 and (baring conflicts), you will wind up with everything here
 (./bin/*) symlinked into $HOME/bin/
