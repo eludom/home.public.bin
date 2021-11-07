@@ -1,29 +1,14 @@
-This directory contains misc little utilities I've written or borrowed
+This directory contains misc little utilities I've written or
+borrowed.  It is set up as a stow repo, so
 
-Two of note are that I use to install all my other files/directories are:
+   mkdir ~/stow
+   cd stow
+   git clone [THIS]
+   stow home.public.bin
 
-  - link2home.sh :: Link files and directories and files to $HOME in
-                    various  ways.  
-  - install :: calls link2home.sh.  
+and (baring conflicts), you will wind up with everything here
+(./bin/*) symlinked into $HOME/bin/
 
-To use install for a directory:
-
-  - Put a COPY (not a link) of /install/ in the directories
-  - change the parameters as needed (e.g. --linkdir to link directory
-    instead of making a new directory in home, --remove to remove
-    files).
-  - (optional), add a file named /.link2home.ignore/ to the directory
-    listing files to be ignored.  For example:
-
-    #+begin_example
-    README.org
-    .link2home.ignore
-    #+end_example
-
-The basic ideas is that if "install" exists in a directory, you can
-just run it and everything will be installed.   The one special case
-is this bin directory, which has to be installed first (because all
-other installs use link2home.sh)
 
 
 
