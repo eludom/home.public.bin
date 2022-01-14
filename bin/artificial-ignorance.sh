@@ -8,7 +8,16 @@
 #
 #   Input:
 #      - input-file on the command line
-#      - terms - one or more on the command line
+#      - terms - one or more on the command line.
+#
+#                terms can have "|" to match more than one term.
+#
+#                If there is a "|", the first term will be used
+#                as the output file name.
+#
+#                Note if you want the
+#                output to have a particualr name, use it as
+#                the first term, it may not actually match in grep.
 #
 #   Output:
 #      - ai-TERM1.txt
@@ -16,6 +25,18 @@
 #      - ...
 #      - ai-TERMn.txt
 #      - ai-leftovers.txt
+#
+# Example
+#
+# I wrapped this in a shell script as follows to write a report.
+#
+#    ! /bin/bash
+#    artificial-ignorance.sh completd-only.org \
+#    'research-projects|clustering|heatmaps' \
+#    'external|USENIX' \
+#    'products|firewall' \
+#    'development|lint|make|python' \
+#
 # set -e
 set -u
 
@@ -35,11 +56,13 @@ fi
 
 for var in "$@"
 do
-    OUTPUT="${PREFIX}${var}.txt"
     PATTERN="${var}"
-    LEFTOVERS_TMP="ai-leftovers-${var}.tmp"
+    # allow patterns of A|B|C, use first element as name
+    FIRST_ELEMENT=`echo $PATTERN | sed -e 's/|.*//'`
+    OUTPUT="${PREFIX}${FIRST_ELEMENT}.txt"
+    LEFTOVERS_TMP="ai-leftovers-${FIRST_ELEMENT}.tmp"
 
-    cat $INPUT | tee >(egrep -i $PATTERN > $OUTPUT) | (egrep -vi $PATTERN > $LEFTOVERS_TMP)
+    cat $INPUT | tee >(egrep -i "$PATTERN" > $OUTPUT) | (egrep -vi "$PATTERN" > $LEFTOVERS_TMP)
 
 
     INPUT=$LEFTOVERS_TMP
