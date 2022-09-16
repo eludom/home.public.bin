@@ -1,0 +1,4 @@
+#! /bin/bash
+# Get my public IP from ifconfig.me
+
+curl ifconfig.me 2>&1 | cat | tail -1 && echo
