@@ -33,18 +33,18 @@ else
     git init .
 fi
 
-# Add all org files
-info adding all .org files
-git add *.org
-
-# get rid of anytthing that's not an .org file
-git clean -f
-
 # Git commit changes if any
 if [[ $(git status --porcelain) ]]; then
     # Changes exist, so commit them
+    info files to be added:
+    git ls-files -o *.org
     info files changed:
-    git ls-files -m
+    git ls-files -m *.org
+    # Add all org files
+    info adding all .org files
+    git add *.org
+    # # get rid of anytthing that's not an .org file
+    # git clean -f
     git commit -am "Autocommit `date`"
     info "Changes committed."
 else

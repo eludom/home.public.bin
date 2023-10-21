@@ -4,6 +4,7 @@
 # This should be run out of cron periodically
 #
 
+echo
 echo "--- Orgwatch `date` ---"
 /home/gmj/bin/orglinks.sh
 /home/gmj/bin/autocommit.sh
