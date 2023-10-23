@@ -31,7 +31,7 @@ fi
 # For good measure "sudo chattr +a $LOGTO"
 
 function l() (
-    NOW=`date +%Y-%M-%d:%H:%m:%S`
+    NOW=`date +%Y-%m-%d:%H:%M:%S`
 
     if  [  $# == 0 ]; then
         warn Nothing to log
