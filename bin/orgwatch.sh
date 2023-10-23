@@ -3,8 +3,11 @@
 #
 # This should be run out of cron periodically
 #
+# Logs to /dev/tty and $LOGFILE
 
-echo
-echo "--- Orgwatch `date` ---"
-/home/gmj/bin/orglinks.sh
-/home/gmj/bin/autocommit.sh
+LOGFILE=/home/gmj/var/log/orgwatch.log
+
+echo "--- Orgwatch `date` ---" |& tee /dev/tty >> ${LOGFILE}
+/home/gmj/bin/orglinks.sh |& tee /dev/tty >> ${LOGFILE}
+/home/gmj/bin/autocommit.sh |& tee /dev/tty >> ${LOGFILE}
+echo |& tee /dev/tty >> ${LOGFILE}
