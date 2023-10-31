@@ -23,9 +23,9 @@ MAXFILES=10000
 mkdir -p "$destination_dir"
 
 # Find all .org files under $HOME and loop through them
-find "$source_dir" -type f -name "*.org" | grep -v "$destination_dir" | head -$MAXFILES | while read -r org_file; do
+find "$source_dir" -type f -name "*.org" | grep -v "$destination_dir" | head -$MAXFILES | while read -r original_file; do
     # Get the relative path by removing the source directory part
-    relative_path="${org_file#$source_dir/}"
+    relative_path="${original_file#$source_dir/}"
 
     # Replace "/" in paths with "__"
     modified_relative_path1="${relative_path//\//__}"
@@ -35,19 +35,27 @@ find "$source_dir" -type f -name "*.org" | grep -v "$destination_dir" | head -$M
 
 
     # Construct the destination path
-    destination_path="$destination_dir/$modified_relative_path"
+    local_link_to_original="$destination_dir/$modified_relative_path"
+
+
+    # if local link and original file both exist and have different inode numbers,
+    # remove the local link
+
+    if [ -e "$original_file" ] && [ -e "$local_link_to_original" ] && [ "$(stat -c%i -- "$original_file")" != "$(stat -c%i -- "$local_link_to_original")" ]; then
+        warn "inode number of original file ${original_file} and linked file have changed.  Removing linked file."
+        \rm -f "$local_link_to_original"
+    fi
 
     # if the target file exists, continue
 
-    if [ -f $destination_path ] ; then
+    if [ -f $local_link_to_original ] ; then
         continue
     fi
 
     # Attempt to create a hard link to the destination
-    if ln "$org_file" "$destination_path" 2>/dev/null; then
-        info "Linked file: $org_file -> $destination_path"
+    if ln "$original_file" "$local_link_to_original" 2>/dev/null; then
+        info "Linked file: $original_file -> $local_link_to_original"
     else
-        warn "Failed to create a hard link for $org_file to $destination_path"
+        warn "Failed to create a hard link for $original_file to $local_link_to_original"
     fi
-
 done
