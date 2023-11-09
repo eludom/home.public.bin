@@ -1,6 +1,6 @@
-# read stdin, grep, include lines containing all words on the command line
-
 all() {
+    # read stdin, grep, include lines containing all words on the command line
+    #
     # Usage: all [grep_flags] "word1" "word2" ...
     #
     # Example usage:

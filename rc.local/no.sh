@@ -1,6 +1,6 @@
-# read stdin, grep out all words on the command line
-
 no() {
+    # read stdin, grep out all words on the command line
+    #
     # Usage: no [grep_flags] "word1" "word2" ...
     #
     # Example usage:
