@@ -24,8 +24,9 @@ mkdir -p "$destination_dir"
 
 # Find all .org files under $HOME and loop through them
 find "$source_dir" -type f -name "*.org" | grep -v "$destination_dir" | head -$MAXFILES | while read -r original_file; do
+
     # Get the relative path by removing the source directory part
-    relative_path="${original_file#$source_dir/}"
+    relative_path=${original_file#"$source_dir"/}
 
     # Replace "/" in paths with "__"
     modified_relative_path1="${relative_path//\//__}"
@@ -48,7 +49,7 @@ find "$source_dir" -type f -name "*.org" | grep -v "$destination_dir" | head -$M
 
     # if the target file exists, continue
 
-    if [ -f $local_link_to_original ] ; then
+    if [ -f "$local_link_to_original" ] ; then
         continue
     fi
 
