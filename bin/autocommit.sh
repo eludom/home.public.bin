@@ -37,12 +37,12 @@ fi
 if [[ $(git status --porcelain) ]]; then
     # Changes exist, so commit them
     info files to be added:
-    git ls-files -o *.org
+    git ls-files -o *.org *.csv
     info files changed:
-    git ls-files -m *.org
+    git ls-files -m *.org *.csv
     # Add all org files
     info adding all .org files
-    git add *.org
+    git add *.org *.csv
     # # get rid of anytthing that's not an .org file
     # git clean -f
     git commit -am "Autocommit `date`"
