@@ -41,8 +41,10 @@ function l() (
     echo ${NOW}: $* >> $LOGTO
     )
 
-function lt() (
+function ltail() (
     # tail the logfile
+
+    info $LOGTO
 
     tail $* $LOGTO
     )
