@@ -38,6 +38,7 @@
 #
 #     ~/.ssh/id_{dsa,rsa}.IDENTITY	- SSH identify file for IDENTITY
 #     ~/.ssh/id_{dsa,rsa}		- Symlink to SSH identity
+#     ~/.ssh/id_{dsa,rsa}.pub		- Symlink to SSH identity
 #
 #     ~/.ssh/authorized_keys.IDENTITY   - SSH authorized keys for IDENTITY
 #     ~/.ssh/authorized_keys            - Symlink to SSH authorized_keys file
@@ -228,14 +229,18 @@ function ssh_become() {
     if ! cd ~/.ssh; then warn "No ~/.ssh credentials"; echo; return; fi
 
     rsa_creds="id_rsa.""${who}"
+    rsa_creds_pub="id_rsa.""${who}".pub
     dsa_creds="id_dsa.""${who}"
+    dsa_creds_pub="id_dsa.""${who}".pub
     authorized_keys="authorized_keys.""${who}"
     config="config.""${who}"
 
     if [ -f "${dsa_creds}" ]; then
         ssh_creds="${dsa_creds}"
+        ssh_creds_pub="${dsa_creds}"
     elif [ -f "${rsa_creds}" ]; then
         ssh_creds="${rsa_creds}"
+        ssh_creds_pub="${rsa_creds_pub}"
     else
         echo "No ssh creds found. "${rsa_creds}" and "${dsa_creds}" do not exist."
         exit 1
@@ -251,6 +256,16 @@ function ssh_become() {
         ln -s "${ssh_creds}" "${target}"
         chmod 400 "${target}"
         ssh-add "${ssh_creds}"
+        [[ -v VERBOSE ]] && set -x
+    fi
+
+    target=`basename $ssh_creds ".""${who}"`.pub
+
+    if [ -f "${ssh_creds_pub}"  ]; then
+        [[ -v VERBOSE ]] && set +x
+        rm -f "${target}" || true
+        ln -s "${ssh_creds_pub}" "${target}"
+        chmod 444 "${target}"
         [[ -v VERBOSE ]] && set -x
     fi
 
