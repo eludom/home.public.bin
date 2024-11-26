@@ -22,8 +22,8 @@ MAXFILES=10000
 # Create the destination directory if it doesn't exist
 mkdir -p "$destination_dir"
 
-# Find all .org files under $HOME and loop through them
-find "$source_dir" -type f -name "*.org" | grep -v "$destination_dir" | head -$MAXFILES | while read -r original_file; do
+# Find all .org and .csv files under $HOME and loop through them
+find "$source_dir" -type f \( -name "*.org" -o -name "*.csv" \) | grep -v "$destination_dir" | head -$MAXFILES | while read -r original_file; do
 
     # Get the relative path by removing the source directory part
     relative_path=${original_file#"$source_dir"/}
