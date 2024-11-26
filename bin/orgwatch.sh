@@ -5,9 +5,19 @@
 #
 # Logs to /dev/tty and $LOGFILE
 
-LOGFILE=/home/gmj/var/log/orgwatch.log
+LOGFILE=/home/gmj/var/log/$(date +\%Y-\%m-%d)-orgwatch.log
 
 echo "--- Orgwatch `date` ---" |& tee /dev/tty >> ${LOGFILE}
 /home/gmj/bin/orglinks.sh |& tee /dev/tty >> ${LOGFILE}
 /home/gmj/bin/autocommit.sh |& tee /dev/tty >> ${LOGFILE}
 echo |& tee /dev/tty >> ${LOGFILE}
+
+# diff diary
+ORGFILES=/home/gmj/orgfiles
+DIFF=${ORGFILES}/`date +%Y-%m-%d:%H:%M`-diary-diff.diff
+cd $ORGFILES/
+
+git diff HEAD~1 HEAD -- stow__home.private.org__Org__diary.org > $DIFF
+git add *.diff
+# mail warning if more than N lines changed, more than M % changed or
+# if there are lines longer than C characacters
