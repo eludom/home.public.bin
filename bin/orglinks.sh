@@ -2,7 +2,7 @@
 #
 # ChatGPT Promt:
 #
-# write me a bash script that finds all the .org files under $HOME and
+# bash script that finds all the .org files under $HOME and
 # hard links them to ~/orgfiles/, changing the "/" in paths to "__"
 
 # This is bash, be safe

@@ -6,6 +6,7 @@
 # Logs to /dev/tty and $LOGFILE
 
 LOGFILE=/home/gmj/var/log/$(date +\%Y-\%m-%d)-orgwatch.log
+touch $LOGFILE
 
 echo "--- Orgwatch `date` ---" |& tee /dev/tty >> ${LOGFILE}
 /home/gmj/bin/orglinks.sh |& tee /dev/tty >> ${LOGFILE}
