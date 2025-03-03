@@ -22,7 +22,7 @@ DEST_DIR = Path.home() / "Documents" / "notes"
 DEST_DIR.mkdir(parents=True, exist_ok=True)
 
 # Default directories to ignore
-DEFAULT_IGNORE_DIRS = [Path.home() / "orgfiles", Path.home() / "tmp"]
+DEFAULT_IGNORE_DIRS = [Path.home() / "orgfiles", Path.home() / "tmp", Path.home() / "Downloads", Path.home() / ".local"]
 
 def get_inode(file_path):
     try:
@@ -37,13 +37,24 @@ def main(test_run, ignore_dirs, mtime_days, max_files):
     ignore_dirs = [Path(dir) for dir in ignore_dirs]
     ignored_dirs_set = set()
 
+
     for file_path in Path(SOURCE_DIR).rglob('*'):
-        if file_path.is_symlink() or linked_files_count >= max_files:
+        if file_path.is_symlink() or not file_path.is_file() or linked_files_count >= max_files:
             continue
 
-        if any(file_path.is_relative_to(ignore_dir) for ignore_dir in ignore_dirs):
-            continue
+        # Check each ignore directory and handle accordingly
+        is_ignored = False
+        for ignore_dir in ignore_dirs:
+            if file_path.is_relative_to(ignore_dir):
+                if ignore_dir not in ignored_dirs_set:
+                    print(f'Ignoring directory: {ignore_dir}')
+                    ignored_dirs_set.add(ignore_dir)
+                is_ignored = True
+                break  # Exit once the file is confirmed to be ignored
 
+        if is_ignored:
+            continue    
+        
         if file_path.suffix in ['.pdf', '.org'] and file_path.stat().st_mtime >= cutoff_time:
             inode = get_inode(file_path)
 
