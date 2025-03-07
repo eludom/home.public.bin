@@ -25,10 +25,10 @@ DEST_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_IGNORE_DIRS = [Path.home() / "orgfiles", Path.home() / "tmp", Path.home() / "Downloads", Path.home() / ".local"]
 
 def get_inode(file_path):
+
     try:
         return os.stat(file_path).st_ino
     except Exception:
-        print(f'Error trying to stat {file_path}')
         return -1
 
 def main(test_run, ignore_dirs, mtime_days, max_files):
@@ -39,6 +39,10 @@ def main(test_run, ignore_dirs, mtime_days, max_files):
 
 
     for file_path in Path(SOURCE_DIR).rglob('*'):
+
+        if ".#" in str(file_path):
+            continue
+        
         if file_path.is_symlink() or not file_path.is_file() or linked_files_count >= max_files:
             continue
 
@@ -53,8 +57,8 @@ def main(test_run, ignore_dirs, mtime_days, max_files):
                 break  # Exit once the file is confirmed to be ignored
 
         if is_ignored:
-            continue    
-        
+            continue
+
         if file_path.suffix in ['.pdf', '.org'] and file_path.stat().st_mtime >= cutoff_time:
             inode = get_inode(file_path)
 
@@ -63,6 +67,13 @@ def main(test_run, ignore_dirs, mtime_days, max_files):
             
             if not any(get_inode(dest_file) == inode for dest_file in DEST_DIR.iterdir()):
                 target_file = DEST_DIR / file_path.name
+
+                # Check if target file already exists, if so, add timestamp
+                if target_file.exists():
+                    timestamp = time.strftime("%Y%m%dT%H%M%S", time.gmtime())
+                    target_file = DEST_DIR / f"{timestamp}--{file_path.name}"
+                    print("Added timestamp to ", target_file)
+
                 if test_run:
                     print(f'DRY RUN: Would link: {file_path} -> {target_file}')
                 else:
@@ -78,5 +89,4 @@ if __name__ == "__main__":
     parser.add_argument('--maxfiles', '-m', type=int, default=DEFAULT_MAXFILES, help='Maximum number of files to link (default: 60)')
     args = parser.parse_args()
     main(args.test_run, args.ignore, args.days, args.maxfiles)
-
 
