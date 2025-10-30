@@ -59,7 +59,7 @@ def main(test_run, ignore_dirs, mtime_days, max_files):
         if is_ignored:
             continue
 
-        if file_path.suffix in ['.pdf', '.org'] and file_path.stat().st_mtime >= cutoff_time:
+        if file_path.suffix in ['.pdf', '.org', '.ods', '.odt','.docx', '.xls','.xlsx'] and file_path.stat().st_mtime >= cutoff_time:
             inode = get_inode(file_path)
 
             if inode == -1:

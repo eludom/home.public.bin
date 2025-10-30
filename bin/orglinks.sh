@@ -23,7 +23,9 @@ MAXFILES=10000
 mkdir -p "$destination_dir"
 
 # Find all .org and .csv files under $HOME and loop through them
-find "$source_dir" -type f \( -name "*.org" -o -name "*.csv" \) | grep -v "$destination_dir" | head -$MAXFILES | while read -r original_file; do
+#   exclude the destination dir and "notes/" wich is a hard-linked
+#   set of files for denotes
+find "$source_dir" -type f \( -name "*.org" -o -name "*.csv" -o -name "*.org_archive" \) | grep -v -e "$destination_dir" -e 'notes/' | head -$MAXFILES | while read -r original_file; do
 
     # Get the relative path by removing the source directory part
     relative_path=${original_file#"$source_dir"/}

@@ -22,3 +22,10 @@ git diff HEAD~1 HEAD -- stow__home.private.org__Org__diary.org > $DIFF
 git add *.diff
 # mail warning if more than N lines changed, more than M % changed or
 # if there are lines longer than C characacters
+
+# List all modified org files
+git ls-files -m \*.org
+# Add all org files
+git add *.org
+# Commit all changes org files
+git commit -m "Added all org files"
