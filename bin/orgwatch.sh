@@ -18,14 +18,19 @@ ORGFILES=/home/gmj/orgfiles
 DIFF=${ORGFILES}/`date +%Y-%m-%d:%H:%M`-diary-diff.diff
 cd $ORGFILES/
 
+# diff the diary file
 git diff HEAD~1 HEAD -- stow__home.private.org__Org__diary.org > $DIFF
+# remove diffs if no changes
+find $DIFF  -type f -size 0 -delete
+
 git add *.diff
 # mail warning if more than N lines changed, more than M % changed or
 # if there are lines longer than C characacters
 
 # List all modified org files
-git ls-files -m \*.org
+git ls-files -m \*.org \*org_archive
 # Add all org files
-git add *.org
+git add *.org *org_archive
 # Commit all changes org files
 git commit -m "Added all org files"
+
