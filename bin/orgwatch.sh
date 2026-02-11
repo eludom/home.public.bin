@@ -250,19 +250,28 @@ link_org_files() {
     #   - Hard links created will point to the real file's inode
 
     while IFS= read -r -d '' original; do
-        local relative="${original#"$HOME"/}"
+        # Skip if original vanished (race condition)
+        [[ -e "$original" ]] || continue
+
+        # Canonicalize path to avoid duplicates from symlinked directories
+        # e.g., ~/org/foo.org and ~/Org/foo.org (where org->Org) become same canonical path
+        local canonical
+        canonical=$(readlink -f "$original")
+        local relative="${canonical#"$HOME"/}"
+
+        # Skip files outside $HOME (can happen with symlinks pointing elsewhere)
+        if [[ "$relative" == "$canonical" ]]; then
+            log_verbose "Skipping (outside HOME): $original → $canonical"
+            continue
+        fi
+
         local encoded
         encoded=$(encode_path "$relative")
         local link="$ORGFILES/$encoded"
 
-        # Skip if original vanished (race condition)
-        [[ -e "$original" ]] || continue
-
-        # Log if this path involves a symlink (for awareness)
-        if [[ -L "$original" ]]; then
-            local target
-            target=$(readlink -f "$original")
-            log_verbose "Note: $relative is symlink → $target"
+        # Log if original path differs from canonical (symlink involved)
+        if [[ "$original" != "$canonical" ]]; then
+            log_verbose "Note: $original → $canonical"
             ((++symlinks))
         fi
 
@@ -279,21 +288,27 @@ link_org_files() {
         fi
 
         # Create hard link (ln follows symlinks by default, links to target)
-        if run ln "$original" "$link" 2>/dev/null; then
+        local ln_err
+        if ln_err=$(run ln "$original" "$link" 2>&1); then
             log "Linked: $relative"
             ((++linked))
         else
-            # Likely cross-filesystem (common when symlink points elsewhere)
+            # Diagnose the failure
             local orig_dev target_dev
             orig_dev=$(stat -L -c%d "$original" 2>/dev/null || echo "?")
             target_dev=$(stat -c%d "$ORGFILES")
+
             if [[ "$orig_dev" != "$target_dev" ]]; then
-                log "WARN: Cross-filesystem, cannot link: $relative"
-                if [[ -L "$original" ]]; then
-                    log "      (symlink target is on different filesystem)"
-                fi
+                log "WARN: Cross-filesystem ($orig_dev vs $target_dev): $relative"
+            elif [[ -e "$link" ]]; then
+                log "WARN: Link already exists: $relative"
+            elif [[ ! -r "$original" ]]; then
+                log "WARN: Cannot read original: $relative"
             else
                 log "WARN: Failed to link: $relative"
+                log "      ln error: $ln_err"
+                log "      original: $original"
+                log "      link: $link"
             fi
             ((++failed))
         fi
