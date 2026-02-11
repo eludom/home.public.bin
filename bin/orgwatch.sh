@@ -66,7 +66,7 @@ cd "${ORGFILES}"
 # git commit -m "Added all org files" || true
 
 # List orphans
-ORPHANS=$(find ~/orgfiles -name "*.org" -links 1)
+ORPHANS=$(find ~/orgfiles -name "*.org" -links 1  ! -path '/home/gmj/orgfiles/.trash/*')
 
 if [ -n "$ORPHANS" ]; then
     echo "WARNING: Orphaned org files detected:" | tee -a "${LOGFILE}"
