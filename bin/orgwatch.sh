@@ -5,32 +5,44 @@
 #
 # Logs to /dev/tty and $LOGFILE
 
-LOGFILE=/home/gmj/var/log/$(date +\%Y-\%m-%d)-orgwatch.log
-touch $LOGFILE
+set -u; set -e; # this is bash.  be safe.
 
-echo "--- Orgwatch `date` ---" |& tee /dev/tty >> ${LOGFILE}
-/home/gmj/bin/orglinks.sh |& tee /dev/tty >> ${LOGFILE}
-/home/gmj/bin/autocommit.sh |& tee /dev/tty >> ${LOGFILE}
-echo |& tee /dev/tty >> ${LOGFILE}
+LOGFILE=/home/gmj/var/log/$(date +%Y-%m-%d)-orgwatch.log
+touch "${LOGFILE}"
 
-# diff diary
+echo "--- Orgwatch $(date) ---" | tee -a "${LOGFILE}"
+/home/gmj/bin/orglinks.sh | tee -a  "${LOGFILE}"
+/home/gmj/bin/autocommit.sh | tee -a "${LOGFILE}"
+echo | tee -a  >> "${LOGFILE}"
+
+# Special directories and files 
 ORGFILES=/home/gmj/orgfiles
-DIFF=${ORGFILES}/`date +%Y-%m-%d:%H:%M`-diary-diff.diff
-cd $ORGFILES/
+DIARY_FILE="stow__home.private.org__Org__diary.org"
+DIARY_DIFF=${ORGFILES}/$(date +%Y-%m-%d:%H:%M)-diary-diff.diff
+PLANS_FILE="stow__home.private.org__Org__$(date +%Y).org"
+PLANS_DIFF=${ORGFILES}/$(date +%Y-%m-%d:%H:%M)-$(date +%Y)-daily-plans-diff.diff
+
+# default to orgfiles dir
+cd "${ORGFILES}"
 
 # diff the diary file
-git diff HEAD~1 HEAD -- stow__home.private.org__Org__diary.org > $DIFF
+git diff HEAD~1 HEAD -- "${DIARY_FILE}" > "${DIARY_DIFF}"
 # remove diffs if no changes
-find $DIFF  -type f -size 0 -delete
+find "${DIARY_DIFF}"  -type f -size 0 -delete
 
-git add *.diff
+# diff the paln file
+git diff HEAD~1 HEAD -- "${PLANS_FILE}" > "${PLANS_DIFF}"
+# remove diffs if no changes
+find "${PLANS_DIFF}"  -type f -size 0 -delete
+
+git add -- *.diff
 # mail warning if more than N lines changed, more than M % changed or
 # if there are lines longer than C characacters
 
 # List all modified org files
 git ls-files -m \*.org \*org_archive
-# Add all org files
-git add *.org *org_archive
+# Add all modified files
+git add -u
 # Commit all changes org files
 git commit -m "Added all org files"
 
