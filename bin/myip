@@ -1,16 +1,63 @@
-#! /bin/bash
-# script to determine my public IP address
+#!/bin/bash
+# script to determine my public IP address (IPv4 and IPv6)
 
-# deal with timeouts?
-#myIP=`dig +short @resolver1.opendns.com myip.opendns.com`
-#myIP=`curl -s ifconfig.me`
-#echo "$myIP"
-#curl -s checkip.dyndns.org | sed -e 's/.*Current IP Address: //' -e 's/<.*$//' 
+show_ip_info() {
+    local ip="$1"
+    local label="$2"
 
-# This works very well, and quickly !!!
-# http://serverfault.com/questions/89114/finding-the-public-ip-address-in-a-shell-script
-dig @resolver1.opendns.com myip.opendns.com +short
-host `dig @resolver1.opendns.com myip.opendns.com +short`
+    [[ -n "$label" ]] && printf "%s: " "$label"
+    echo "$ip"
+
+    # Try reverse DNS first
+    rdns=$(host "$ip" 2>/dev/null | grep -o 'pointer .*' | sed 's/pointer //')
+    if [[ -n "$rdns" ]]; then
+        echo "  $rdns"
+    else
+        # Fallback to ip-api.com for ISP/location info
+        info=$(curl -s --max-time 3 "http://ip-api.com/json/$ip?fields=isp,city,country" 2>/dev/null)
+        if [[ -n "$info" ]]; then
+            isp=$(echo "$info" | grep -o '"isp":"[^"]*"' | cut -d'"' -f4)
+            city=$(echo "$info" | grep -o '"city":"[^"]*"' | cut -d'"' -f4)
+            country=$(echo "$info" | grep -o '"country":"[^"]*"' | cut -d'"' -f4)
+            [[ -n "$isp" ]] && echo "  $isp ($city, $country)"
+        fi
+    fi
+}
+
+is_ipv4() {
+    [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
+}
+
+is_ipv6() {
+    [[ "$1" =~ ^[0-9a-fA-F:]+$ && "$1" == *:* ]]
+}
+
+found=0
+
+# Get IPv4
+for url in "https://ipv4.icanhazip.com" "https://api.ipify.org" "https://ifconfig.me"; do
+    ip=$(curl -4 -s --max-time 5 "$url" 2>/dev/null | tr -d '[:space:]')
+    if is_ipv4 "$ip"; then
+        show_ip_info "$ip" "IPv4"
+        found=1
+        break
+    fi
+done
+
+# Get IPv6
+for url in "https://ipv6.icanhazip.com" "https://api64.ipify.org" "https://ifconfig.me"; do
+    ip=$(curl -6 -s --max-time 5 "$url" 2>/dev/null | tr -d '[:space:]')
+    if is_ipv6 "$ip"; then
+        show_ip_info "$ip" "IPv6"
+        found=1
+        break
+    fi
+done
+
+if [[ $found -eq 0 ]]; then
+    echo "Could not determine public IP" >&2
+    exit 1
+fi
 
 
 
