@@ -12,7 +12,7 @@ import argparse
 from pathlib import Path
 
 # Set default values for mtime days and max files
-DEFAULT_MTIME_DAYS = 3
+DEFAULT_MTIME_DAYS = 4
 DEFAULT_MAXFILES = 60
 
 SOURCE_DIR = Path.home()
@@ -22,7 +22,7 @@ DEST_DIR = Path.home() / "Documents" / "notes"
 DEST_DIR.mkdir(parents=True, exist_ok=True)
 
 # Default directories to ignore
-DEFAULT_IGNORE_DIRS = [Path.home() / "orgfiles", Path.home() / "tmp", Path.home() / "Downloads", Path.home() / ".local"]
+DEFAULT_IGNORE_DIRS = [Path.home() / "orgfiles", Path.home() / "tmp", Path.home() / "Downloads", Path.home() / ".local", Path.home() / "notes-recover", Path.home() / "notes-recover-raw", Path.home() / "stow/home.private.notes/notes"]
 
 def get_inode(file_path):
 
@@ -77,8 +77,12 @@ def main(test_run, ignore_dirs, mtime_days, max_files):
                 if test_run:
                     print(f'DRY RUN: Would link: {file_path} -> {target_file}')
                 else:
-                    os.link(file_path, target_file)
-                    print(f'Linked: {file_path} -> {target_file}')
+                    print(f'Linking: {file_path} -> {target_file}')
+
+                    try:
+                        os.link(file_path, target_file)
+                    except Exception:
+                        print(f'Failed to link {file_path} -> {target_file}')
                     linked_files_count += 1
 
 if __name__ == "__main__":
