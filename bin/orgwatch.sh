@@ -242,6 +242,10 @@ link_org_files() {
 
     local linked=0 skipped=0 failed=0 symlinks=0
 
+    # Track canonical paths we've already processed this run
+    # (find -L can return same file via multiple symlink paths)
+    declare -A seen_canonical
+
     # Use -L to follow symlinks (both directory and file symlinks)
     # This means:
     #   - Symlinked directories are descended into
@@ -265,6 +269,13 @@ link_org_files() {
             continue
         fi
 
+        # Skip if we've already processed this canonical path in this run
+        if [[ -v seen_canonical["$canonical"] ]]; then
+            log_debug "Skipping duplicate: $original (already processed as ${seen_canonical[$canonical]})"
+            continue
+        fi
+        seen_canonical["$canonical"]="$original"
+
         local encoded
         encoded=$(encode_path "$relative")
         local link="$ORGFILES/$encoded"
@@ -277,7 +288,7 @@ link_org_files() {
 
         # If link exists with same inode, skip
         if [[ -e "$link" ]]; then
-            if [[ "$(stat -L -c%i "$original")" == "$(stat -c%i "$link")" ]]; then
+            if [[ "$(stat -c%i "$canonical")" == "$(stat -c%i "$link")" ]]; then
                 log_debug "Unchanged: $relative"
                 ((++skipped))
                 continue
@@ -287,27 +298,27 @@ link_org_files() {
             run rm -f "$link"
         fi
 
-        # Create hard link (ln follows symlinks by default, links to target)
+        # Create hard link using canonical path
         local ln_err
-        if ln_err=$(run ln "$original" "$link" 2>&1); then
+        if ln_err=$(run ln "$canonical" "$link" 2>&1); then
             log "Linked: $relative"
             ((++linked))
         else
             # Diagnose the failure
             local orig_dev target_dev
-            orig_dev=$(stat -L -c%d "$original" 2>/dev/null || echo "?")
+            orig_dev=$(stat -c%d "$canonical" 2>/dev/null || echo "?")
             target_dev=$(stat -c%d "$ORGFILES")
 
             if [[ "$orig_dev" != "$target_dev" ]]; then
                 log "WARN: Cross-filesystem ($orig_dev vs $target_dev): $relative"
             elif [[ -e "$link" ]]; then
                 log "WARN: Link already exists: $relative"
-            elif [[ ! -r "$original" ]]; then
+            elif [[ ! -r "$canonical" ]]; then
                 log "WARN: Cannot read original: $relative"
             else
                 log "WARN: Failed to link: $relative"
                 log "      ln error: $ln_err"
-                log "      original: $original"
+                log "      canonical: $canonical"
                 log "      link: $link"
             fi
             ((++failed))
