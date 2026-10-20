@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-CONFIG_FILE="$HOME/etc/backup/gitdirs.txt"
+CONFIG_FILE="${GIT_BACKUP_CONFIG:-$HOME/etc/backup/gitdirs.txt}"
 LOG_DIR="$HOME/var/log"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LOG_FILE="$LOG_DIR/git_backup_${TIMESTAMP}.log"
