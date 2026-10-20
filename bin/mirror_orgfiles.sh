@@ -46,7 +46,6 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --log|-log)
-            # Optional argument: consume next arg only if it exists and is a directory.
             if [[ $# -ge 2 && "$2" != -* && -d "$2" ]]; then
                 LOG_DIR="$2"
                 shift
@@ -67,15 +66,14 @@ ORG_DIR="$MY_HOME/orgfiles"
 HOME_REAL="$(realpath -m -- "$MY_HOME")"
 ORG_DIR_REAL="$(realpath -m -- "$ORG_DIR")"
 
-# Search root: --only directory or $HOME
+# Search root
 if [[ -n "$ONLY_DIR" ]]; then
     SEARCH_ROOT="$(realpath -m -- "$ONLY_DIR")"
 else
     SEARCH_ROOT="$HOME_REAL"
 fi
 
-# Determine which paths in ~/orgfiles should be pruned.
-# Empty prefix = prune everything stale; non-empty = prune only under that prefix.
+# Prune prefix: empty = full run, otherwise only that subtree in ~/orgfiles
 if [[ -z "$ONLY_DIR" || "$SEARCH_ROOT" == "$HOME_REAL" ]]; then
     PRUNE_PREFIX=""
 elif [[ "$SEARCH_ROOT" == "$HOME_REAL"/* ]]; then
@@ -100,38 +98,22 @@ collect_and_link() {
 
     while IFS= read -r -d '' p; do
         rp="$(realpath -m -- "$p" 2>/dev/null)" || continue
-
-        # Never mirror from the orgfiles directory itself
-        if [[ "$rp" == "$ORG_DIR_REAL" || "$rp" == "$ORG_DIR_REAL"/* ]]; then
-            continue
-        fi
-
+        [[ "$rp" == "$ORG_DIR_REAL" || "$rp" == "$ORG_DIR_REAL"/* ]] && continue
         [[ -f "$rp" ]] || continue
-
-        # In --only mode, skip files outside the chosen search root
-        if [[ -n "$ONLY_DIR" && "$rp" != "$SEARCH_ROOT" && "$rp" != "$SEARCH_ROOT"/* ]]; then
-            continue
-        fi
-
-        # Deduplicate files reachable through multiple paths
-        if [[ -n "${seen[$rp]+_}" ]]; then
-            continue
-        fi
+        [[ -n "$ONLY_DIR" && "$rp" != "$SEARCH_ROOT" && "$rp" != "$SEARCH_ROOT"/* ]] && continue
+        [[ -n "${seen[$rp]+_}" ]] && continue
         seen["$rp"]=1
 
-        # Destination path relative to $HOME
         if [[ "$rp" == "$HOME_REAL" || "$rp" == "$HOME_REAL"/* ]]; then
             rel="${rp#$HOME_REAL/}"
         else
             rel="external/${rp#/}"
         fi
-
         dest="$ORG_DIR/$rel"
         keep["$rel"]=1
 
-        # Already hardlinked?
         if [[ -e "$dest" && "$rp" -ef "$dest" ]]; then
-            [[ $VERBOSE == true ]] && echo "current (hardlink): $rel"
+            [[ $VERBOSE == true ]] && echo "synced (hardlink): $rel"
             continue
         fi
 
@@ -154,25 +136,19 @@ collect_and_link() {
             -type f -name '*.org' -print0 2>/dev/null
     )
 
-    # Stale cleanup: only within the current --only scope, or everywhere on full runs.
+    # Stale cleanup (only within the current --only scope or all on full runs)
     if [[ $DRY_RUN == true ]]; then
         return
     fi
 
     while IFS= read -r -d '' stale; do
         rel="${stale#$ORG_DIR/}"
-
-        if [[ -n "$PRUNE_PREFIX" ]]; then
-            if [[ "$rel" != "$PRUNE_PREFIX" && "$rel" != "$PRUNE_PREFIX"/* ]]; then
-                continue
-            fi
+        if [[ -n "$PRUNE_PREFIX" && "$rel" != "$PRUNE_PREFIX" && "$rel" != "$PRUNE_PREFIX"/* ]]; then
+            continue
         fi
-
         if [[ -z "${keep[$rel]+_}" ]]; then
             echo "removing stale: $rel"
             rm -f -- "$stale"
-
-            # Remove empty parent directories up to ~/orgfiles
             dir="$(dirname "$stale")"
             while [[ "$dir" != "$ORG_DIR" && "$dir" != "/" ]]; do
                 rmdir "$dir" 2>/dev/null || break
@@ -185,12 +161,13 @@ collect_and_link() {
 commit_changes() {
     [[ $DRY_RUN == true ]] && return
 
+    git -C "$ORG_DIR" add -A
+
     if git -C "$ORG_DIR" diff --cached --quiet; then
         [[ $VERBOSE == true ]] && echo "No changes to commit"
         return
     fi
 
-    # Save a full diff of the staged changes, if requested
     if [[ -n "$LOG_DIR" ]]; then
         local stamp diff_file
         stamp="$(date +%Y%m%d-%H%M%S)"
