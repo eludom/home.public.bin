@@ -2,6 +2,12 @@
 # Script to print "some" lines of a file, like head or tail but, random start
 #
 # Usage: some [[-#] FILE]
+#
+# Note
+#
+#  shuf -n "$HOW_MANY" "$FILE"
+#
+# accomplishes this without continguous lines
 
 set -e; set -u; set -o pipefail # be safe out there
 
@@ -51,8 +57,14 @@ function someLines {
     #         - revert to head-like behavior (with a timeout?)  (since we have no idea how long stdin is)
 
     # pick a random starting line at least HOW_MANY back from the end
-    FIRST=$((1 + RANDOM % (LINES - HOW_MANY + 1)))
-    FIRST=$((FIRST>LINES ? LINES : FIRST))
+    
+    # pick a random starting line at least HOW_MANY back from the end
+    if (( LINES <= HOW_MANY )); then
+	FIRST=1
+    else
+	FIRST=$(od -An -N4 -tu4 /dev/urandom)
+	FIRST=$((FIRST % (LINES - HOW_MANY + 1) + 1))
+    fi
 
     LAST=$((FIRST + HOW_MANY - 1))
     LAST=$((LAST>LINES ? LINES : LAST))
@@ -149,3 +161,4 @@ function main() {
 
 
 main $*
+
