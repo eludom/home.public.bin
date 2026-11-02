@@ -62,7 +62,8 @@ info() {
 
 # Ensure log directory exists
 mkdir -p "$LOG_DIR"
-info "Starting git autocommit backup script..."
+info -n "Starting git autocommit backup script at "
+date
 log "=== Git Backup Started: $(date) ==="
 if $DRY_RUN; then log "*** DRY RUN MODE ENABLED ***"; fi
 if $ADD_UNTRACKED; then log "*** INCLUDE UNTRACKED FILES ENABLED ***"; fi
