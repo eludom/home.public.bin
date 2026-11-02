@@ -223,35 +223,4 @@ log "Log saved to: $LOG_FILE"
 info ""
 info "Summary: $TOTAL_DIRS dirs, $CHANGED_DIRS changed, $UNCHANGED_DIRS unchanged, $WARNINGS warning(s), $ERRORS error(s)"
 info "Backup process finished. Log saved to: $LOG_FILE"
-```
 
-# Key changes:
-
-# - Directories with no changes are completely silent (no "Processing", no untracked file report, no "No changes" line).
-# - Warnings for missing directories, invalid git repos, etc. are still shown.
-# - A summary with counts is printed/logged at the end.
-
-# Sitll getting warnings like:
-
-# Processing: /home/gmj/stow/home.private.dotfiles
-# Found 0 untracked .org file(s) (0 total untracked file(s))
-# No changes to commit in /home/gmj/stow/home.private.dotfiles.
-
-
-# The messages you’re seeing are printed because the script enters the “changes detected” branch, even though no actual changes exist. This usually happens when `git diff --quiet` returns a non‑zero status (e.g., due to file timestamps, permissions, or other side effects), or when the check for untracked files is incomplete.
-
-# The easiest fix is to make the script **completely silent for directories with no real changes** – no “Processing”, no “Found … untracked”, no commit attempt. Add a clean early‑return in `process_dir` after detecting that there is nothing to commit.
-
-# Replace the current `process_dir` function with this version:
-
-# ```bash
-
-# ```
-
-# This will:
-# - Never print “Processing: …” for unchanged directories.
-# - Never print “Found 0 untracked …” for unchanged directories.
-# - Never attempt to commit when there is nothing to commit.
-# - Still show warnings for missing directories / invalid repos.
-
-# If you still see the “Processing:” lines after applying this, then you are running a different copy of the script (maybe an old version). Double‑check the file you execute and ensure the updated function is inside it.
