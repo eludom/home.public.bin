@@ -91,7 +91,7 @@ process_dir() {
         WARNINGS=$((WARNINGS + 1))
         msg="WARNING: Directory $dir does not exist. Skipping."
         log "$msg"
-        info "$msg"
+        info "$msg"   # keep warnings visible
         return
     fi
 
@@ -103,104 +103,100 @@ process_dir() {
         return
     fi
 
-    local skipped=false
-
     if ! git rev-parse --is-inside-work-tree &>/dev/null; then
         WARNINGS=$((WARNINGS + 1))
         msg="WARNING: $dir is not a valid git repository. Skipping."
         log "$msg"
         info "$msg"
-        skipped=true
+        popd >/dev/null
+        return
     fi
 
-    if [[ $skipped == false ]]; then
-        local has_changes=false
-        if $ADD_UNTRACKED; then
-            if [[ -n $(git status --porcelain) ]]; then
-                has_changes=true
-            fi
-        else
-            if ! git diff --quiet || ! git diff --cached --quiet; then
-                has_changes=true
-            fi
+    # 🔍 Check for changes BEFORE printing anything
+    local has_changes=false
+    if $ADD_UNTRACKED; then
+        if [[ -n "$(git status --porcelain)" ]]; then
+            has_changes=true
         fi
-
-        if [[ $has_changes == false ]]; then
-            UNCHANGED_DIRS=$((UNCHANGED_DIRS + 1))
-            skipped=true
+    else
+        if ! git diff --quiet || ! git diff --cached --quiet; then
+            has_changes=true
         fi
     fi
 
-    if [[ $skipped == false ]]; then
-        CHANGED_DIRS=$((CHANGED_DIRS + 1))
+    if [[ "$has_changes" == false ]]; then
+        UNCHANGED_DIRS=$((UNCHANGED_DIRS + 1))
+        popd >/dev/null
+        return   # ✅ completely silent for unchanged dirs
+    fi
 
-        info ""
-        info "Processing: $dir"
-        log "\n----------------------------------------"
-        log ""
-        log "Processing: $dir"
-        log "----------------------------------------"
+    # Only here if there ARE changes
+    CHANGED_DIRS=$((CHANGED_DIRS + 1))
 
-        untracked_org=$(git ls-files --others --exclude-standard '*.org')
-        untracked_all=$(git ls-files --others --exclude-standard)
+    info ""
+    info "Processing: $dir"
+    log "\n----------------------------------------"
+    log ""
+    log "Processing: $dir"
+    log "----------------------------------------"
 
-        org_count=0
-        [[ -n "$untracked_org" ]] && org_count=$(echo "$untracked_org" | wc -l | tr -d ' ')
+    untracked_org=$(git ls-files --others --exclude-standard '*.org')
+    untracked_all=$(git ls-files --others --exclude-standard)
 
-        all_count=0
-        [[ -n "$untracked_all" ]] && all_count=$(echo "$untracked_all" | wc -l | tr -d ' ')
+    org_count=0
+    [[ -n "$untracked_org" ]] && org_count=$(echo "$untracked_org" | wc -l | tr -d ' ')
+    all_count=0
+    [[ -n "$untracked_all" ]] && all_count=$(echo "$untracked_all" | wc -l | tr -d ' ')
 
-        info "Found $org_count untracked .org file(s) ($all_count total untracked file(s))"
+    info "Found $org_count untracked .org file(s) ($all_count total untracked file(s))"
 
-        if [[ -n "$untracked_org" ]]; then
-            log "[UNTRACKED .ORG FILES]:"
-            log "$untracked_org"
+    if [[ -n "$untracked_org" ]]; then
+        log "[UNTRACKED .ORG FILES]:"
+        log "$untracked_org"
+    else
+        log "[UNTRACKED .ORG FILES]: None"
+    fi
+
+    ADD_CMD="git add -u"
+    if $ADD_UNTRACKED; then
+        ADD_CMD="git add -A"
+    fi
+
+    log "[CHANGES DETECTED]"
+    status_opts="--short"
+    if ! $ADD_UNTRACKED; then status_opts="$status_opts --untracked-files=no"; fi
+
+    git status $status_opts >> "$LOG_FILE"
+    if $VERBOSE; then git status $status_opts; fi
+
+    if $DRY_RUN; then
+        log "[DRY-RUN] Would execute: $ADD_CMD"
+        log "[DRY-RUN] Would execute: git commit -m 'Auto-backup: $(date)'"
+        info "[DRY-RUN] Skipped committing changes for $dir"
+    else
+        info "Committing changes in $dir..."
+        log "Running: $ADD_CMD"
+        if ! add_output=$($ADD_CMD 2>&1); then
+            ERRORS=$((ERRORS + 1))
+            log "ERROR: '$ADD_CMD' failed in $dir"
+            log "$add_output"
         else
-            log "[UNTRACKED .ORG FILES]: None"
-        fi
+            [[ -n "$add_output" ]] && log "$add_output"
 
-        ADD_CMD="git add -u"
-        if $ADD_UNTRACKED; then
-            ADD_CMD="git add -A"
-        fi
-
-        log "[CHANGES DETECTED]"
-        status_opts="--short"
-        if ! $ADD_UNTRACKED; then status_opts="$status_opts --untracked-files=no"; fi
-
-        git status $status_opts >> "$LOG_FILE"
-        if $VERBOSE; then git status $status_opts; fi
-
-        if $DRY_RUN; then
-            log "[DRY-RUN] Would execute: $ADD_CMD"
-            log "[DRY-RUN] Would execute: git commit -m 'Auto-backup: $(date)'"
-            info "[DRY-RUN] Skipped committing changes for $dir"
-        else
-            info "Committing changes in $dir..."
-            log "Running: $ADD_CMD"
-            if ! add_output=$($ADD_CMD 2>&1); then
-                ERRORS=$((ERRORS + 1))
-                log "ERROR: '$ADD_CMD' failed in $dir"
-                log "$add_output"
+            log "Running: git commit..."
+            if commit_output=$(git commit -m "Auto-backup: $(date +'%Y-%m-%d %H:%M:%S')" 2>&1); then
+                log "$commit_output"
+                info "Successfully committed changes in $dir"
             else
-                [[ -n "$add_output" ]] && log "$add_output"
-
-                log "Running: git commit..."
-                if commit_output=$(git commit -m "Auto-backup: $(date +'%Y-%m-%d %H:%M:%S')" 2>&1); then
-                    log "$commit_output"
-                    info "Successfully committed changes in $dir"
-                else
-                    ERRORS=$((ERRORS + 1))
-                    log "ERROR: 'git commit' failed in $dir"
-                    log "$commit_output"
-                fi
+                ERRORS=$((ERRORS + 1))
+                log "ERROR: 'git commit' failed in $dir"
+                log "$commit_output"
             fi
         fi
     fi
 
     popd >/dev/null
 }
-
 # Process directories
 while IFS= read -r dir || [[ -n "$dir" ]]; do
     # Skip empty lines and comments
@@ -234,3 +230,28 @@ info "Backup process finished. Log saved to: $LOG_FILE"
 # - Directories with no changes are completely silent (no "Processing", no untracked file report, no "No changes" line).
 # - Warnings for missing directories, invalid git repos, etc. are still shown.
 # - A summary with counts is printed/logged at the end.
+
+# Sitll getting warnings like:
+
+# Processing: /home/gmj/stow/home.private.dotfiles
+# Found 0 untracked .org file(s) (0 total untracked file(s))
+# No changes to commit in /home/gmj/stow/home.private.dotfiles.
+
+
+# The messages you’re seeing are printed because the script enters the “changes detected” branch, even though no actual changes exist. This usually happens when `git diff --quiet` returns a non‑zero status (e.g., due to file timestamps, permissions, or other side effects), or when the check for untracked files is incomplete.
+
+# The easiest fix is to make the script **completely silent for directories with no real changes** – no “Processing”, no “Found … untracked”, no commit attempt. Add a clean early‑return in `process_dir` after detecting that there is nothing to commit.
+
+# Replace the current `process_dir` function with this version:
+
+# ```bash
+
+# ```
+
+# This will:
+# - Never print “Processing: …” for unchanged directories.
+# - Never print “Found 0 untracked …” for unchanged directories.
+# - Never attempt to commit when there is nothing to commit.
+# - Still show warnings for missing directories / invalid repos.
+
+# If you still see the “Processing:” lines after applying this, then you are running a different copy of the script (maybe an old version). Double‑check the file you execute and ensure the updated function is inside it.
