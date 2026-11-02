@@ -6,7 +6,7 @@
 # Assisted-by: deepseek/deepseek-v4-flash-0731
 # Maintainer: George Jones <gmj@pobox.com>
 # URL: 
-# Version: 0.2
+# Version: 0.3
 
 set -euo pipefail
 
@@ -76,46 +76,77 @@ fi
 
 info "Reading repositories from $CONFIG_FILE"
 
-# Process directories
-while IFS= read -r dir || [[ -n "$dir" ]]; do
-    # Skip empty lines and comments
-    [[ -z "$dir" || "$dir" =~ ^[[:space:]]*# ]] && continue
+# Counters for summary
+TOTAL_DIRS=0
+CHANGED_DIRS=0
+UNCHANGED_DIRS=0
+WARNINGS=0
+ERRORS=0
 
-    # Expand tilde if present
-    dir="${dir/#\~/$HOME}"
-
-    info ""
-    info "Processing: $dir"
-    log "\n----------------------------------------"
-    log ""
-    log "Processing: $dir"
-    log "----------------------------------------"
+# Process one directory from the config file
+process_dir() {
+    local dir="$1"
 
     if [[ ! -d "$dir" ]]; then
+        WARNINGS=$((WARNINGS + 1))
         msg="WARNING: Directory $dir does not exist. Skipping."
         log "$msg"
         info "$msg"
-        continue
+        return
     fi
 
-    # Subshell to handle cd safely
-    (
-        cd "$dir" || exit 1
+    if ! pushd "$dir" >/dev/null 2>&1; then
+        WARNINGS=$((WARNINGS + 1))
+        msg="WARNING: Cannot enter directory $dir. Skipping."
+        log "$msg"
+        info "$msg"
+        return
+    fi
 
-        if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-            msg="WARNING: $dir is not a valid git repository. Skipping."
-            log "$msg"
-            info "$msg"
-            exit 0
+    local skipped=false
+
+    if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+        WARNINGS=$((WARNINGS + 1))
+        msg="WARNING: $dir is not a valid git repository. Skipping."
+        log "$msg"
+        info "$msg"
+        skipped=true
+    fi
+
+    if [[ $skipped == false ]]; then
+        local has_changes=false
+        if $ADD_UNTRACKED; then
+            if [[ -n $(git status --porcelain) ]]; then
+                has_changes=true
+            fi
+        else
+            if ! git diff --quiet || ! git diff --cached --quiet; then
+                has_changes=true
+            fi
         fi
 
-        # 1. Report untracked files
+        if [[ $has_changes == false ]]; then
+            UNCHANGED_DIRS=$((UNCHANGED_DIRS + 1))
+            skipped=true
+        fi
+    fi
+
+    if [[ $skipped == false ]]; then
+        CHANGED_DIRS=$((CHANGED_DIRS + 1))
+
+        info ""
+        info "Processing: $dir"
+        log "\n----------------------------------------"
+        log ""
+        log "Processing: $dir"
+        log "----------------------------------------"
+
         untracked_org=$(git ls-files --others --exclude-standard '*.org')
         untracked_all=$(git ls-files --others --exclude-standard)
-        
+
         org_count=0
         [[ -n "$untracked_org" ]] && org_count=$(echo "$untracked_org" | wc -l | tr -d ' ')
-        
+
         all_count=0
         [[ -n "$untracked_all" ]] && all_count=$(echo "$untracked_all" | wc -l | tr -d ' ')
 
@@ -128,38 +159,18 @@ while IFS= read -r dir || [[ -n "$dir" ]]; do
             log "[UNTRACKED .ORG FILES]: None"
         fi
 
-        # Determine git add strategy
         ADD_CMD="git add -u"
         if $ADD_UNTRACKED; then
             ADD_CMD="git add -A"
         fi
 
-        # 2. Check for changes based on the selected mode
-        has_changes=false
-        if $ADD_UNTRACKED; then
-            if [[ -n $(git status --porcelain) ]]; then
-                has_changes=true
-            fi
-        else
-            if ! git diff --quiet || ! git diff --cached --quiet; then
-                has_changes=true
-            fi
-        fi
-
-        if ! $has_changes; then
-            log "No matching changes to commit."
-            info "No changes to commit in $dir."
-            exit 0
-        fi
-
         log "[CHANGES DETECTED]"
         status_opts="--short"
         if ! $ADD_UNTRACKED; then status_opts="$status_opts --untracked-files=no"; fi
-        
+
         git status $status_opts >> "$LOG_FILE"
         if $VERBOSE; then git status $status_opts; fi
 
-	# 3. Add files and commit
         if $DRY_RUN; then
             log "[DRY-RUN] Would execute: $ADD_CMD"
             log "[DRY-RUN] Would execute: git commit -m 'Auto-backup: $(date)'"
@@ -168,26 +179,58 @@ while IFS= read -r dir || [[ -n "$dir" ]]; do
             info "Committing changes in $dir..."
             log "Running: $ADD_CMD"
             if ! add_output=$($ADD_CMD 2>&1); then
+                ERRORS=$((ERRORS + 1))
                 log "ERROR: '$ADD_CMD' failed in $dir"
                 log "$add_output"
-                exit 0
-            fi
-            [[ -n "$add_output" ]] && log "$add_output"
-
-            log "Running: git commit..."
-            if commit_output=$(git commit -m "Auto-backup: $(date +'%Y-%m-%d %H:%M:%S')" 2>&1); then
-                log "$commit_output"
-                info "Successfully committed changes in $dir"
             else
-                log "ERROR: 'git commit' failed in $dir"
-                log "$commit_output"
+                [[ -n "$add_output" ]] && log "$add_output"
+
+                log "Running: git commit..."
+                if commit_output=$(git commit -m "Auto-backup: $(date +'%Y-%m-%d %H:%M:%S')" 2>&1); then
+                    log "$commit_output"
+                    info "Successfully committed changes in $dir"
+                else
+                    ERRORS=$((ERRORS + 1))
+                    log "ERROR: 'git commit' failed in $dir"
+                    log "$commit_output"
+                fi
             fi
         fi
-    )
+    fi
 
+    popd >/dev/null
+}
+
+# Process directories
+while IFS= read -r dir || [[ -n "$dir" ]]; do
+    # Skip empty lines and comments
+    [[ -z "$dir" || "$dir" =~ ^[[:space:]]*# ]] && continue
+
+    # Expand tilde if present
+    dir="${dir/#\~/$HOME}"
+
+    TOTAL_DIRS=$((TOTAL_DIRS + 1))
+    process_dir "$dir"
 done < "$CONFIG_FILE"
 
-log "\n=== Backup Finished: $(date) ==="
+# Summary
+log "\n=== Summary ==="
+log "Total directories: $TOTAL_DIRS"
+log "Changed: $CHANGED_DIRS"
+log "Unchanged: $UNCHANGED_DIRS"
+log "Warnings: $WARNINGS"
+log "Errors: $ERRORS"
+log ""
+log "=== Backup Finished: $(date) ==="
 log "Log saved to: $LOG_FILE"
-info "Backup process finished. Log saved to: $LOG_FILE"
 
+info ""
+info "Summary: $TOTAL_DIRS dirs, $CHANGED_DIRS changed, $UNCHANGED_DIRS unchanged, $WARNINGS warning(s), $ERRORS error(s)"
+info "Backup process finished. Log saved to: $LOG_FILE"
+```
+
+# Key changes:
+
+# - Directories with no changes are completely silent (no "Processing", no untracked file report, no "No changes" line).
+# - Warnings for missing directories, invalid git repos, etc. are still shown.
+# - A summary with counts is printed/logged at the end.
